@@ -1,0 +1,39 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build MDSP Solver (make)",
+            "type": "shell",
+            "command": "make",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "Run MDSP Solver (Single Instance)",
+            "type": "shell",
+            "command": "./bin/mdsp_solver data/full-5-15-1.txt 3600 --algo p1",
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Run MDSP Solver (Binary Search FEAS)",
+            "type": "shell",
+            "command": "./bin/mdsp_solver data/full-5-15-1.txt 3600 --algo feas",
+            "group": "test",
+            "problemMatcher": []
+        },
+        {
+            "label": "Run MDSP Solver (Batch Mode)",
+            "type": "shell",
+            "command": "./bin/mdsp_solver --batch data/ --out results.csv --time 3600 --algo p1",
+            "group": "test",
+            "problemMatcher": []
+        }
+    ]
+}
