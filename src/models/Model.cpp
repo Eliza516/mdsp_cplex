@@ -87,21 +87,21 @@ MDSPSolution MDSPModel::solve(bool verbose) {
             for (int i = 0; i < u; ++i)
                 for (int j = i + 1; j < u; ++j)
                     sum += x[dIdx][i][j];
-            model.add(sum >= multiplicities_[dIdx]);
+            model.add(sum == multiplicities_[dIdx]);
             sum.end();
         }
 
-        // Constraint (5) from the paper: Σ_{j≠i} x^d_{ij} ≤ z_i
-        // Single sum over all j ≠ i (both directions) per (i, d) pair.
+        // Constraint (5) from the paper: Σ_{d∈D'} x^d_{ij} ≤ z_j, for each pair 1≤i<j≤u.
+        // Sum over all distance values d for a *fixed pair* (i, j), bounded by z_j
+        // (the later point of the pair; z_i=1 follows from the z monotonicity constraint (10)).
         for (int i = 0; i < u; ++i) {
-            for (int dIdx = 0; dIdx < nd; ++dIdx) {
-                IloExpr sumAll(env);
-                for (int j = 0; j < u; ++j) {
-                    if (j > i)      sumAll += x[dIdx][i][j];
-                    else if (j < i) sumAll += x[dIdx][j][i];
+            for (int j = i + 1; j < u; ++j) {
+                IloExpr sumD(env);
+                for (int dIdx = 0; dIdx < nd; ++dIdx) {
+                    sumD += x[dIdx][i][j];
                 }
-                model.add(sumAll <= z[i]);
-                sumAll.end();
+                model.add(sumD <= z[j]);
+                sumD.end();
             }
         }
 
