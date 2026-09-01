@@ -86,6 +86,21 @@ MDSPSolution FeasModel::solve(bool verbose) {
 
         model.add(p[0] == 0);
 
+        // Constraint (17): Σ_{j≠i} x^d_{ij} ≤ 1, 1 ≤ i ≤ t, d ∈ D
+        // Each point is the endpoint at most once per distance.
+        // Single sum over all j ≠ i per (i, d) pair (matching IP's constraint 5 with z_i=1).
+        for (int i = 0; i < t; ++i) {
+            for (int dIdx = 0; dIdx < nd; ++dIdx) {
+                IloExpr sumAll(env);
+                for (int j = 0; j < t; ++j) {
+                    if (j > i)      sumAll += x[dIdx][i][j];
+                    else if (j < i) sumAll += x[dIdx][j][i];
+                }
+                model.add(sumAll <= 1);
+                sumAll.end();
+            }
+        }
+
         IloCplex cplex(model);
         // Apply resource-control parameters (threads, work memory)
         cplex.setParam(IloCplex::Param::Threads, threads_);

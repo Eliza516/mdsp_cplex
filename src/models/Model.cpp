@@ -19,6 +19,10 @@ MDSPModel::MDSPModel(const MDSPInstance& inst, int l, int u, long long B, double
     computeMultiplicities();
 }
 
+void MDSPModel::setWarmStart(const std::vector<long long>& points) {
+    warmStartPoints_ = points;
+}
+
 void MDSPModel::computeMultiplicities() {
     std::map<long long, int> counts;
     for (long long d : instance_.D) counts[d]++;
@@ -87,15 +91,17 @@ MDSPSolution MDSPModel::solve(bool verbose) {
             sum.end();
         }
 
+        // Constraint (5) from the paper: Σ_{j≠i} x^d_{ij} ≤ z_i
+        // Single sum over all j ≠ i (both directions) per (i, d) pair.
         for (int i = 0; i < u; ++i) {
             for (int dIdx = 0; dIdx < nd; ++dIdx) {
-                IloExpr sum(env);
+                IloExpr sumAll(env);
                 for (int j = 0; j < u; ++j) {
-                    if (j > i)      sum += x[dIdx][i][j];
-                    else if (j < i) sum += x[dIdx][j][i];
+                    if (j > i)      sumAll += x[dIdx][i][j];
+                    else if (j < i) sumAll += x[dIdx][j][i];
                 }
-                model.add(sum <= z[i]);
-                sum.end();
+                model.add(sumAll <= z[i]);
+                sumAll.end();
             }
         }
 
@@ -125,6 +131,53 @@ MDSPSolution MDSPModel::solve(bool verbose) {
         cplex.setParam(IloCplex::Param::WorkMem, workMemMB_);
         cplex.setParam(IloCplex::Param::TimeLimit, timeLimit_);
         if (!verbose) cplex.setOut(env.getNullStream());
+
+        // --- MIP warm-start from LNS solution ---
+        if (!warmStartPoints_.empty()) {
+            IloNumVarArray startVars(env);
+            IloNumArray startVals(env);
+
+            std::vector<long long> ws = warmStartPoints_;
+            std::sort(ws.begin(), ws.end());
+            int nws = std::min(static_cast<int>(ws.size()), u);
+
+            // p variables
+            for (int i = 0; i < u; ++i) {
+                startVars.add(p[i]);
+                if (i < nws) {
+                    startVals.add(static_cast<double>(ws[i]));
+                } else {
+                    long long filler = (nws > 0 ? ws[nws - 1] : 0) + 1 + (i - nws);
+                    startVals.add(static_cast<double>(std::min(filler, B)));
+                }
+            }
+
+            // z variables
+            for (int i = 0; i < u; ++i) {
+                startVars.add(z[i]);
+                startVals.add(i < nws ? 1.0 : 0.0);
+            }
+
+            // x variables: set x[d][i][j] = 1 iff both points active and diff matches d
+            for (int dIdx = 0; dIdx < nd; ++dIdx) {
+                for (int i = 0; i < u; ++i) {
+                    for (int j = i + 1; j < u; ++j) {
+                        double val = 0.0;
+                        if (i < nws && j < nws) {
+                            if (ws[j] - ws[i] == distinctValues_[dIdx]) {
+                                val = 1.0;
+                            }
+                        }
+                        startVars.add(x[dIdx][i][j]);
+                        startVals.add(val);
+                    }
+                }
+            }
+
+            cplex.addMIPStart(startVars, startVals);
+            startVars.end();
+            startVals.end();
+        }
 
         auto t0_solve = std::chrono::steady_clock::now();
         bool ok = cplex.solve();

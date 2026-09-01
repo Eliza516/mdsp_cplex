@@ -13,7 +13,7 @@ void CsvExporter::ensureHeaderExists() {
     std::ifstream check(path_);
     if (!check.good()) {
         std::ofstream out(path_);
-        out << "Instances,|D|,nIP_LB,nIP_UB,nIP_gap,nIP_time,nFEAS_LB,nFEAS_UB,nFEAS_gap,nFEAS_time,nMAX_LB,nMAX_UB,nMAX_gap,nMAX_time,IP_LB,IP_UB,IP_gap,IP_time,FEAS_LB,FEAS_UB,FEAS_gap,FEAS_time,MAX_LB,MAX_UB,MAX_gap,MAX_time,tIP_LB,tIP_UB,tIP_gap,tIP_time,tFEAS_LB,tFEAS_UB,tFEAS_gap,tFEAS_time,tMAX_LB,tMAX_UB,tMAX_gap,tMAX_time\n";
+        out << "Instances,|D|,nIP_LB,nIP_UB,nIP_gap,nIP_time,nFEAS_LB,nFEAS_UB,nFEAS_gap,nFEAS_time,IP_LB,IP_UB,IP_gap,IP_time,FEAS_LB,FEAS_UB,FEAS_gap,FEAS_time,tIP_LB,tIP_UB,tIP_gap,tIP_time,tFEAS_LB,tFEAS_UB,tFEAS_gap,tFEAS_time\n";
     }
 }
 
@@ -36,10 +36,10 @@ static void printResult(std::ofstream& out, const RunResult& res, bool isLast) {
         out << "-,-,-,-" << (isLast ? "" : ",");
         return;
     }
-    if (res.lb < 0) out << "-,";
+    if (res.lb < 0 || res.lb > 1e20) out << "-,";
     else out << std::fixed << std::setprecision(1) << res.lb << ",";
 
-    if (res.ub < 0) out << "-,";
+    if (res.ub < 0 || res.ub > 1e20) out << "-,";
     else out << std::fixed << std::setprecision(1) << res.ub << ",";
 
     out << std::fixed << std::setprecision(1) << res.gapPercent << ","
@@ -58,13 +58,10 @@ void CsvExporter::writeRow(const ResultRow& row) {
     out << row.instanceName << "," << row.k << ",";
     printResult(out, row.nIP, false);
     printResult(out, row.nFEAS, false);
-    printResult(out, row.nMAX, false);
     printResult(out, row.IP, false);
     printResult(out, row.FEAS, false);
-    printResult(out, row.MAX, false);
     printResult(out, row.tIP, false);
-    printResult(out, row.tFEAS, false);
-    printResult(out, row.tMAX, true);
+    printResult(out, row.tFEAS, true);
     out << "\n";
 
     out.flush();

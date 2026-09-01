@@ -6,6 +6,7 @@
 #include "bounds/ArithSequenceUB.h"
 #include "bounds/LNSUpperBound.h"
 #include "models/Model.h"
+#include "models/MaxModel.h"
 #include "models/BinarySearchSolver.h"
 #include "runner/BatchRunner.h"
 
@@ -36,7 +37,7 @@ int main(int argc, char** argv) {
         bool verbose = true;
         std::string algo = "p1";
         // resource-control defaults
-        int threads = 1;
+        int threads = 0;
         int workMemMB = 1024;
         int concurrency = 1;
 
@@ -79,7 +80,7 @@ int main(int argc, char** argv) {
     bool enableCyclic = true;
     bool enableLNS = true;
     // resource-control defaults for single-instance mode
-    int threads = 1;
+    int threads = 0;
     int workMemMB = 1024;
 
     for (int i = 2; i < argc; ++i) {
@@ -106,6 +107,7 @@ int main(int argc, char** argv) {
         std::cout << "Loaded instance '" << path << "' with k = " << originalInst.k()
                   << " distances.\n";
 
+        auto t0 = std::chrono::steady_clock::now();
         MDSPInstance currentInst = originalInst;
         std::vector<long long> thornArcs;
 
@@ -134,6 +136,8 @@ int main(int argc, char** argv) {
             }
         }
 
+        std::vector<long long> lnsBestPoints;
+
         if (enableLNS) {
             // Algorithm 3: Arithmetic Sequence Summation (Section 4.3)
             ArithSeqResult arithRes = ArithSequenceUB::construct(currentInst, bounds.B);
@@ -145,31 +149,40 @@ int main(int argc, char** argv) {
             }
 
             // Algorithm 4: LNS Destroy-and-Repair (Section 4.4)
-            LNSResult lnsRes = LNSUpperBound::solve(currentInst, bounds.B, 50);
+            LNSResult lnsRes = LNSUpperBound::solve(currentInst, bounds.B, 100);
             std::cout << "[Pre-processing] LNS (Alg 4) result: u = " << lnsRes.u << "\n";
             if (lnsRes.u > 0 && lnsRes.u < bounds.u) {
                 std::cout << "                 -> Improved global upper bound (u) from "
                           << bounds.u << " to " << lnsRes.u << "\n";
                 bounds.u = lnsRes.u;
             }
+            lnsBestPoints = lnsRes.bestPoints;
         }
 
 
         bounds.B = MDSPBoundsCalculator::refineValueBound(currentInst, bounds.u);
-        std::cout << "Final pre-processing bounds:\n"
+
+        auto t_prep = std::chrono::steady_clock::now();
+        double prepTime = std::chrono::duration<double>(t_prep - t0).count();
+
+        std::cout << "Final pre-processing bounds (Prep time: " << prepTime << " s):\n"
                   << "  l (lower bound |P*|) = " << bounds.l << "\n"
                   << "  u (upper bound |P*|) = " << bounds.u << "\n"
                   << "  B (max point value)  = " << bounds.B << "\n\n";
 
         MDSPSolution sol;
-        auto t0 = std::chrono::steady_clock::now();
 
         if (algo == "feas") {
             std::cout << "Solving using Binary Search Algorithm (FEAS - Algorithm 1) ...\n";
             sol = BinarySearchSolver::solve(currentInst, bounds.l, bounds.u, bounds.B, timeLimit, true, threads, workMemMB);
+        } else if (algo == "max") {
+            std::cout << "Solving using Max Model (Pseudo-Polynomial Formulation) ...\n";
+            MDSPMaxModel model(currentInst, bounds.l, bounds.u, bounds.B, timeLimit, threads, workMemMB);
+            sol = model.solve(/*verbose=*/true);
         } else {
             std::cout << "Solving using Integer Programming Formulation (P1) ...\n";
             MDSPModel model(currentInst, bounds.l, bounds.u, bounds.B, timeLimit, threads, workMemMB);
+            if (!lnsBestPoints.empty()) model.setWarmStart(lnsBestPoints);
             sol = model.solve(/*verbose=*/true);
         }
 

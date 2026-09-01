@@ -5,8 +5,11 @@
 // -----------------------------------------------------------------------------
 // Section 4.4: Large Neighborhood Search (LNS) for MDSP (Algorithm 4)
 //
-// Uses Algorithm 3 (Arithmetic Sequence Summation) for the construction step,
-// then applies destroy-and-repair iterations to find a tight upper bound u.
+// Input:  D — target distance set, B — upper bound on integer range
+// Output: P — smallest distance superset found
+//
+// Uses greedy CONSTRUCT for initial solution and repair,
+// and value-based DESTROY to select skeleton points for re-construction.
 // -----------------------------------------------------------------------------
 struct LNSResult {
     std::vector<long long> bestPoints;
@@ -15,12 +18,5 @@ struct LNSResult {
 
 class LNSUpperBound {
 public:
-    static LNSResult solve(const MDSPInstance& inst, long long B, int iterations = 50);
-
-private:
-    static std::vector<long long> computeDelta(const std::vector<long long>& P);
-    static std::vector<long long> multisetDifference(const std::vector<long long>& D,
-                                                     const std::vector<long long>& deltaP);
-    // Greedy repair: add points one by one until all distances are covered
-    static void greedyRepair(std::vector<long long>& P, const MDSPInstance& inst, long long B);
+    static LNSResult solve(const MDSPInstance& inst, long long B, int iterations = 100);
 };

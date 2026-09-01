@@ -50,7 +50,10 @@ void BatchRunner::runDirectory(const std::string& dirPath) {
     }
     closedir(dir);
 
-    std::sort(files.begin(), files.end());
+    std::sort(files.begin(), files.end(), [](const std::string& a, const std::string& b) {
+        if (a.length() != b.length()) return a.length() < b.length();
+        return a < b;
+    });
 
     // If concurrency_ <= 1, run sequentially. Otherwise split into `concurrency_` groups
     if (concurrency_ <= 1 || files.size() < 2) {
@@ -101,15 +104,15 @@ void BatchRunner::runFiles(const std::vector<std::string>& paths) {
     }
 }
 
+#include "models/MaxModel.h"
+
 static RunResult executeConfig(const MDSPInstance& baseInst, const std::string& algo, bool usePruning, bool useCyclic, bool useLNS, double timeLimit, bool verbose,
                                 int threads, int workMemMB) {
     RunResult res;
-    if (algo == "max") {
-        res.valid = false;
-        return res; // MAX is not implemented
-    }
 
     try {
+        auto t0 = std::chrono::steady_clock::now();
+        
         MDSPInstance currentInst = baseInst;
         std::vector<long long> thornArcs;
 
@@ -128,23 +131,34 @@ static RunResult executeConfig(const MDSPInstance& baseInst, const std::string& 
             if (l_cyclic > bounds.l) bounds.l = l_cyclic;
         }
 
+        std::vector<long long> lnsBestPoints;
+
         if (useLNS) {
             ArithSeqResult arithRes = ArithSequenceUB::construct(currentInst, bounds.B);
             if (arithRes.u > 0 && arithRes.u < bounds.u) bounds.u = arithRes.u;
 
             LNSResult lnsRes = LNSUpperBound::solve(currentInst, bounds.B, 100);
             if (lnsRes.u > 0 && lnsRes.u < bounds.u) bounds.u = lnsRes.u;
+            lnsBestPoints = lnsRes.bestPoints;
         }
 
         bounds.B = MDSPBoundsCalculator::refineValueBound(currentInst, bounds.u);
 
+        auto t_prep = std::chrono::steady_clock::now();
+        double prepTime = std::chrono::duration<double>(t_prep - t0).count();
+        std::cout << "[prep:" << prepTime << "s] " << std::flush;
+
         MDSPSolution sol;
-        auto t0 = std::chrono::steady_clock::now();
 
         if (algo == "feas") {
+
             sol = BinarySearchSolver::solve(currentInst, bounds.l, bounds.u, bounds.B, timeLimit, verbose, threads, workMemMB);
+        } else if (algo == "max") {
+            MDSPMaxModel model(currentInst, bounds.l, bounds.u, bounds.B, timeLimit, threads, workMemMB);
+            sol = model.solve(verbose);
         } else {
             MDSPModel model(currentInst, bounds.l, bounds.u, bounds.B, timeLimit, threads, workMemMB);
+            if (!lnsBestPoints.empty()) model.setWarmStart(lnsBestPoints);
             sol = model.solve(/*verbose=*/verbose);
         }
 
@@ -185,26 +199,23 @@ void BatchRunner::runOne(const std::string& path) {
         MDSPInstance inst = MDSPReader::readFromFile(path);
         row.k = inst.k();
 
+        // nIP/nFEAS: ALL new improvements (pruning + cyclic LB + LNS/Arith UB)
         std::cout << "  nIP... " << std::flush;
-        row.nIP   = executeConfig(inst, "p1",   false, true,  true,  timeLimit_, verbose_, threads_, workMemMB_);
+        row.nIP   = executeConfig(inst, "p1",   true, true,  true,  timeLimit_, verbose_, threads_, workMemMB_);
         std::cout << "nFEAS... " << std::flush;
-        row.nFEAS = executeConfig(inst, "feas", false, true,  true,  timeLimit_, verbose_, threads_, workMemMB_);
-        std::cout << "nMAX... " << std::flush;
-        row.nMAX  = executeConfig(inst, "max",  false, true,  true,  timeLimit_, verbose_, threads_, workMemMB_);
+        row.nFEAS = executeConfig(inst, "feas", true, true,  true,  timeLimit_, verbose_, threads_, workMemMB_);
 
+        // IP/FEAS: Cyclic LB only, no UB improvements (approximates Fontoura's bounds)
         std::cout << "\n  IP... " << std::flush;
-        row.IP    = executeConfig(inst, "p1",   false, false, false, timeLimit_, verbose_, threads_, workMemMB_);
+        row.IP    = executeConfig(inst, "p1",   false, true, false, timeLimit_, verbose_, threads_, workMemMB_);
         std::cout << "FEAS... " << std::flush;
-        row.FEAS  = executeConfig(inst, "feas", false, false, false, timeLimit_, verbose_, threads_, workMemMB_);
-        std::cout << "MAX... " << std::flush;
-        row.MAX   = executeConfig(inst, "max",  false, false, false, timeLimit_, verbose_, threads_, workMemMB_);
+        row.FEAS  = executeConfig(inst, "feas", false, true, false, timeLimit_, verbose_, threads_, workMemMB_);
 
+        // tIP/tFEAS: Trivial bounds only (no preprocessing at all)
         std::cout << "\n  tIP... " << std::flush;
-        row.tIP   = executeConfig(inst, "p1",   true,  true,  true,  timeLimit_, verbose_, threads_, workMemMB_);
-        std::cout << "tFEAS... " << std::flush;
-        row.tFEAS = executeConfig(inst, "feas", true,  true,  true,  timeLimit_, verbose_, threads_, workMemMB_);
-        std::cout << "tMAX... \n";
-        row.tMAX  = executeConfig(inst, "max",  true,  true,  true,  timeLimit_, verbose_, threads_, workMemMB_);
+        row.tIP   = executeConfig(inst, "p1",   false, false, false, timeLimit_, verbose_, threads_, workMemMB_);
+        std::cout << "tFEAS... \n";
+        row.tFEAS = executeConfig(inst, "feas", false, false, false, timeLimit_, verbose_, threads_, workMemMB_);
 
     } catch (const std::exception& e) {
         std::cout << "ERROR: " << e.what() << "\n";

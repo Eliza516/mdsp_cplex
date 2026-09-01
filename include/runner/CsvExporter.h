@@ -12,7 +12,7 @@ struct RunResult {
 struct ResultRow {
     std::string instanceName;
     int k = 0;
-    RunResult nIP, nFEAS, nMAX, IP, FEAS, MAX, tIP, tFEAS, tMAX;
+    RunResult nIP, nFEAS, IP, FEAS, tIP, tFEAS;
 };
 
 class CsvExporter {

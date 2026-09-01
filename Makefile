@@ -34,6 +34,7 @@ SRC           = src/main.cpp \
                 src/bounds/ArithSequenceUB.cpp \
                 src/bounds/LNSUpperBound.cpp \
                 src/models/Model.cpp \
+                src/models/MaxModel.cpp \
                 src/models/FeasModel.cpp \
                 src/models/BinarySearchSolver.cpp \
                 src/runner/CsvExporter.cpp \

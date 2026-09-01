@@ -1,3 +1,0 @@
-Instances,|D|,nIP_LB,nIP_UB,nIP_gap,nIP_time,nFEAS_LB,nFEAS_UB,nFEAS_gap,nFEAS_time,nMAX_LB,nMAX_UB,nMAX_gap,nMAX_time,IP_LB,IP_UB,IP_gap,IP_time,FEAS_LB,FEAS_UB,FEAS_gap,FEAS_time,MAX_LB,MAX_UB,MAX_gap,MAX_time,tIP_LB,tIP_UB,tIP_gap,tIP_time,tFEAS_LB,tFEAS_UB,tFEAS_gap,tFEAS_time,tMAX_LB,tMAX_UB,tMAX_gap,tMAX_time
-drand-100-110-1.txt,100,15.0,94.0,84.0,3600.9,15.0,36.0,58.3,3600.2,-,-,-,-,15.0,-,100.0,3600.1,15.0,-,100.0,3600.1,-,-,-,-,15.0,-,100.0,3600.1,15.0,-,100.0,3600.1,-,-,-,-
-drand-100-110-2.txt,100,15.0,73.0,79.5,3600.6,15.0,36.0,58.3,3600.0,-,-,-,-,15.0,-,100.0,3600.0,15.0,-,100.0,3600.0,-,-,-,-,15.0,-,100.0,3600.1,15.0,-,100.0,3600.0,-,-,-,-
