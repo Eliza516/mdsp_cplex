@@ -64,6 +64,16 @@ Single instance:
 ./bin/mdsp_solver data/full-5-15-1.txt 3600 --algo feas
 ```
 
+Resource-control flags (to limit CPU/memory usage and avoid freezing):
+
+```bash
+# Limit to 1 thread and 1 GB CPLEX work memory (safe default on laptops)
+./bin/mdsp_solver data/full-5-15-1.txt 3600 --algo p1 --threads 1 --workmem 1024
+
+# Batch mode example with limits
+./bin/mdsp_solver --batch data/ --out results.csv --time 1800 --algo p1 --threads 2 --workmem 2048 --concurrency 1
+```
+
 Batch mode (all files in a directory):
 ```bash
 ./bin/mdsp_solver --batch data/ --out results.csv --time 3600 --algo p1

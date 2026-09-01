@@ -1,6 +1,5 @@
 #include "bounds/ThornArcPruner.h"
 #include <algorithm>
-#include <cmath>
 #include <vector>
 
 PruningResult ThornArcPruner::prune(const MDSPInstance& inst) {

@@ -10,8 +10,12 @@
 
 ILOSTLBEGIN
 
-FeasModel::FeasModel(const MDSPInstance& inst, int t, long long B, double timeLimitSeconds)
-    : instance_(inst), t_(t), B_(B), timeLimit_(timeLimitSeconds) {
+// START: resource-control additions
+FeasModel::FeasModel(const MDSPInstance& inst, int t, long long B, double timeLimitSeconds,
+                                         int threads, int workMemMB)
+        : instance_(inst), t_(t), B_(B), timeLimit_(timeLimitSeconds),
+            threads_(threads), workMemMB_(workMemMB) {
+// END: resource-control additions
     computeMultiplicities();
 }
 
@@ -83,6 +87,9 @@ MDSPSolution FeasModel::solve(bool verbose) {
         model.add(p[0] == 0);
 
         IloCplex cplex(model);
+        // Apply resource-control parameters (threads, work memory)
+        cplex.setParam(IloCplex::Param::Threads, threads_);
+        cplex.setParam(IloCplex::Param::WorkMem, workMemMB_);
         cplex.setParam(IloCplex::Param::TimeLimit, timeLimit_);
         if (!verbose) cplex.setOut(env.getNullStream());
 

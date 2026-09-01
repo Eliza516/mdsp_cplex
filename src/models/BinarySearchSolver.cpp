@@ -3,8 +3,11 @@
 #include <chrono>
 #include <iostream>
 
+// START: resource-control additions
 MDSPSolution BinarySearchSolver::solve(const MDSPInstance& inst, int l, int u, long long B,
-                                       double totalTimeLimitSeconds, bool verbose) {
+                                       double totalTimeLimitSeconds, bool verbose,
+                                       int threads, int workMemMB) {
+// END: resource-control additions
     MDSPSolution bestSol;
     bestSol.bestBound = l;
 
@@ -28,7 +31,7 @@ MDSPSolution BinarySearchSolver::solve(const MDSPInstance& inst, int l, int u, l
         }
 
         try {
-            FeasModel feas(inst, t_MID, B, remainingTime);
+            FeasModel feas(inst, t_MID, B, remainingTime, threads, workMemMB);
             MDSPSolution sol = feas.solve(/*verbose=*/false);
             accumulatedCplexTime += sol.cplexTimeSeconds;
 

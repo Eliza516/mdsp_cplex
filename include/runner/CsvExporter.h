@@ -1,17 +1,18 @@
 #pragma once
 #include <string>
 
-struct ResultRow {
-    std::string instanceName;
-    int k = 0;
-    int l = 0;
-    int u = 0;
-    long long B = 0;
+struct RunResult {
     double lb = -1.0;
     double ub = -1.0;
     double gapPercent = 100.0;
     double timeSeconds = 0.0;
-    std::string status;
+    bool valid = false;
+};
+
+struct ResultRow {
+    std::string instanceName;
+    int k = 0;
+    RunResult nIP, nFEAS, nMAX, IP, FEAS, MAX, tIP, tFEAS, tMAX;
 };
 
 class CsvExporter {

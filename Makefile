@@ -2,6 +2,13 @@
 # Makefile for the MDSP (Minimum Distance Superset Problem) solver
 # Requires IBM ILOG CPLEX Optimization Studio (Concert Technology, C++ API)
 # =============================================================================
+#
+# NOTE FOR TESTING:
+# The target below is isolated for ThornArcPruner unit tests. It compiles only the
+# pruner source and the standalone test file, so the full program is not affected.
+# This is intentionally separate from the main solver build and can be removed
+# after testing finishes.
+# =============================================================================
 
 CPLEXDIR      = /opt/ibm/ILOG/CPLEX_Studio2211/cplex
 CONCERTDIR    = /opt/ibm/ILOG/CPLEX_Studio2211/concert
@@ -35,9 +42,16 @@ SRC           = src/main.cpp \
 OBJ           = $(SRC:.cpp=.o)
 TARGET        = bin/mdsp_solver
 
-.PHONY: all clean run run-batch
+.PHONY: all clean run run-batch test-thorn
 
 all: $(TARGET)
+
+# Standalone unit test for ThornArcPruner.
+# This does not link the main solver and therefore does not alter the rest of the program.
+test-thorn:
+	@mkdir -p bin
+	$(CXX) $(CXXFLAGS) -o bin/test_thorn_arc_pruner tests/thorn_arc_pruner_tests.cpp src/bounds/ThornArcPruner.cpp
+	./bin/test_thorn_arc_pruner
 
 $(TARGET): $(OBJ)
 	@mkdir -p bin

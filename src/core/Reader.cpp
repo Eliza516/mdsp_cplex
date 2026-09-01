@@ -8,28 +8,38 @@ MDSPInstance MDSPReader::readFromFile(const std::string& path) {
     if (!in.is_open()) {
         throw std::runtime_error("Could not open instance file: " + path);
     }
-
-    int k;
-    if (!(in >> k)) {
-        throw std::runtime_error("Failed to read k (number of distances) from " + path);
-    }
-    if (k <= 0) {
-        throw std::runtime_error("Invalid number of distances (k <= 0) in " + path);
-    }
-
     MDSPInstance inst;
-    inst.D.reserve(static_cast<size_t>(k));
-    for (int i = 0; i < k; ++i) {
-        long long d;
-        if (!(in >> d)) {
-            throw std::runtime_error("Expected " + std::to_string(k) +
-                                      " distances but file ended early: " + path);
+    std::string word;
+    std::vector<long long> all_numbers;
+
+    while (in >> word) {
+        if (word == "NAME") {
+            in >> word; // skip the name string
+            continue;
         }
-        if (d <= 0) {
-            throw std::runtime_error("Distances must be positive integers, got " +
-                                      std::to_string(d));
+        try {
+            all_numbers.push_back(std::stoll(word));
+        } catch (...) {
+            // Ignore non-integers or throw if you prefer strictness
         }
-        inst.D.push_back(d);
     }
+
+    if (all_numbers.empty()) {
+        throw std::runtime_error("No distances found in " + path);
+    }
+
+    // Treat all parsed numeric tokens as distances (do not treat a leading
+    // integer as a count). Some instance files include a leading count; if
+    // those files actually include the count, remove it from the file instead
+    // or adapt this reader intentionally. This change makes the reader
+    // consistently interpret every numeric token as a distance value.
+    inst.D = all_numbers;
+
+    for (long long d : inst.D) {
+        if (d <= 0) {
+            throw std::runtime_error("Distances must be positive integers, got " + std::to_string(d));
+        }
+    }
+
     return inst;
 }

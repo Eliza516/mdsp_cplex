@@ -35,6 +35,10 @@ int main(int argc, char** argv) {
         double timeLimit = 3600.0;
         bool verbose = true;
         std::string algo = "p1";
+        // resource-control defaults
+        int threads = 1;
+        int workMemMB = 1024;
+        int concurrency = 1;
 
         for (int i = 2; i < argc; ++i) {
             std::string arg = argv[i];
@@ -44,6 +48,12 @@ int main(int argc, char** argv) {
                 timeLimit = std::stod(argv[++i]);
             } else if (arg == "--algo" && i + 1 < argc) {
                 algo = argv[++i];
+            } else if (arg == "--threads" && i + 1 < argc) {
+                threads = std::stoi(argv[++i]);
+            } else if (arg == "--workmem" && i + 1 < argc) {
+                workMemMB = std::stoi(argv[++i]);
+            } else if (arg == "--concurrency" && i + 1 < argc) {
+                concurrency = std::stoi(argv[++i]);
             } else if (arg == "--quiet") {
                 verbose = false;
             } else if (dir.empty()) {
@@ -57,7 +67,7 @@ int main(int argc, char** argv) {
             return 1;
         }
 
-        BatchRunner runner(outCsv, timeLimit, verbose, algo);
+        BatchRunner runner(outCsv, timeLimit, verbose, algo, threads, workMemMB, concurrency);
         runner.runDirectory(dir);
         return 0;
     }
@@ -68,6 +78,9 @@ int main(int argc, char** argv) {
     bool enablePruning = true;
     bool enableCyclic = true;
     bool enableLNS = true;
+    // resource-control defaults for single-instance mode
+    int threads = 1;
+    int workMemMB = 1024;
 
     for (int i = 2; i < argc; ++i) {
         std::string arg = argv[i];
@@ -79,6 +92,10 @@ int main(int argc, char** argv) {
             enableCyclic = false;
         } else if (arg == "--no-lns") {
             enableLNS = false;
+        } else if (arg == "--threads" && i + 1 < argc) {
+            // single-instance mode resource control
+            // WARNING: keep to small values on personal machines
+            threads = std::stoi(argv[++i]);
         } else if (i == 2 && arg.find_first_not_of("0123456789.") == std::string::npos) {
             timeLimit = std::stod(arg);
         }
@@ -99,16 +116,19 @@ int main(int argc, char** argv) {
                 thornArcs = pruneRes.thornArcs;
                 std::cout << "[Pre-processing] Thorn-arc pruning removed " << thornArcs.size()
                           << " distance(s). Remaining k = " << currentInst.k() << "\n";
+            } else {
+                std::cout << "[Pre-processing] Thorn-arc pruning removed 0 distance(s).\n";
             }
         }
 
         MDSPBounds bounds = MDSPBoundsCalculator::computeTrivialBounds(currentInst);
-        std::cout << "Trivial bounds: l0 = " << bounds.l << ", u0 = " << bounds.u << "\n";
+        std::cout << "[Pre-processing] Trivial bounds: l0 = " << bounds.l << ", u0 = " << bounds.u << "\n";
 
         if (enableCyclic) {
             int l_cyclic = CyclicLowerBound::computeLowerBound(currentInst);
+            std::cout << "[Pre-processing] Cyclic Z/gZ lower bound result: l = " << l_cyclic << "\n";
             if (l_cyclic > bounds.l) {
-                std::cout << "[Pre-processing] Cyclic Z/gZ lower bound improved l from "
+                std::cout << "                 -> Improved global lower bound (l) from "
                           << bounds.l << " to " << l_cyclic << "\n";
                 bounds.l = l_cyclic;
             }
@@ -117,20 +137,23 @@ int main(int argc, char** argv) {
         if (enableLNS) {
             // Algorithm 3: Arithmetic Sequence Summation (Section 4.3)
             ArithSeqResult arithRes = ArithSequenceUB::construct(currentInst, bounds.B);
+            std::cout << "[Pre-processing] Arith-Seq construction (Alg 3) result: u = " << arithRes.u << "\n";
             if (arithRes.u > 0 && arithRes.u < bounds.u) {
-                std::cout << "[Pre-processing] Arith-Seq construction (Alg 3) yields u = "
-                          << arithRes.u << " (was " << bounds.u << ")\n";
+                std::cout << "                 -> Improved global upper bound (u) from "
+                          << bounds.u << " to " << arithRes.u << "\n";
                 bounds.u = arithRes.u;
             }
 
             // Algorithm 4: LNS Destroy-and-Repair (Section 4.4)
             LNSResult lnsRes = LNSUpperBound::solve(currentInst, bounds.B, 50);
+            std::cout << "[Pre-processing] LNS (Alg 4) result: u = " << lnsRes.u << "\n";
             if (lnsRes.u > 0 && lnsRes.u < bounds.u) {
-                std::cout << "[Pre-processing] LNS (Alg 4) improved u from "
+                std::cout << "                 -> Improved global upper bound (u) from "
                           << bounds.u << " to " << lnsRes.u << "\n";
                 bounds.u = lnsRes.u;
             }
         }
+
 
         bounds.B = MDSPBoundsCalculator::refineValueBound(currentInst, bounds.u);
         std::cout << "Final pre-processing bounds:\n"
@@ -143,10 +166,10 @@ int main(int argc, char** argv) {
 
         if (algo == "feas") {
             std::cout << "Solving using Binary Search Algorithm (FEAS - Algorithm 1) ...\n";
-            sol = BinarySearchSolver::solve(currentInst, bounds.l, bounds.u, bounds.B, timeLimit, true);
+            sol = BinarySearchSolver::solve(currentInst, bounds.l, bounds.u, bounds.B, timeLimit, true, threads, workMemMB);
         } else {
             std::cout << "Solving using Integer Programming Formulation (P1) ...\n";
-            MDSPModel model(currentInst, bounds.l, bounds.u, bounds.B, timeLimit);
+            MDSPModel model(currentInst, bounds.l, bounds.u, bounds.B, timeLimit, threads, workMemMB);
             sol = model.solve(/*verbose=*/true);
         }
 

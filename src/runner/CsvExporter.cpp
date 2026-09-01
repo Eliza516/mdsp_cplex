@@ -3,6 +3,7 @@
 #include <iomanip>
 #include <sstream>
 #include <stdexcept>
+#include <mutex>
 
 CsvExporter::CsvExporter(std::string csvPath) : path_(std::move(csvPath)) {
     ensureHeaderExists();
@@ -12,7 +13,7 @@ void CsvExporter::ensureHeaderExists() {
     std::ifstream check(path_);
     if (!check.good()) {
         std::ofstream out(path_);
-        out << "Instance,|D|,l,u,B,LB,UB,Gap(%),Time(s),Status\n";
+        out << "Instances,|D|,nIP_LB,nIP_UB,nIP_gap,nIP_time,nFEAS_LB,nFEAS_UB,nFEAS_gap,nFEAS_time,nMAX_LB,nMAX_UB,nMAX_gap,nMAX_time,IP_LB,IP_UB,IP_gap,IP_time,FEAS_LB,FEAS_UB,FEAS_gap,FEAS_time,MAX_LB,MAX_UB,MAX_gap,MAX_time,tIP_LB,tIP_UB,tIP_gap,tIP_time,tFEAS_LB,tFEAS_UB,tFEAS_gap,tFEAS_time,tMAX_LB,tMAX_UB,tMAX_gap,tMAX_time\n";
     }
 }
 
@@ -30,27 +31,41 @@ bool CsvExporter::alreadyHas(const std::string& instanceName) const {
     return false;
 }
 
+static void printResult(std::ofstream& out, const RunResult& res, bool isLast) {
+    if (!res.valid) {
+        out << "-,-,-,-" << (isLast ? "" : ",");
+        return;
+    }
+    if (res.lb < 0) out << "-,";
+    else out << std::fixed << std::setprecision(1) << res.lb << ",";
+
+    if (res.ub < 0) out << "-,";
+    else out << std::fixed << std::setprecision(1) << res.ub << ",";
+
+    out << std::fixed << std::setprecision(1) << res.gapPercent << ","
+        << std::fixed << std::setprecision(1) << res.timeSeconds << (isLast ? "" : ",");
+}
+
 void CsvExporter::writeRow(const ResultRow& row) {
+    static std::mutex csv_mutex;
+    std::lock_guard<std::mutex> guard(csv_mutex);
+
     std::ofstream out(path_, std::ios::app);
     if (!out.is_open()) {
         throw std::runtime_error("Could not append to CSV file: " + path_);
     }
 
-    out << row.instanceName << ","
-        << row.k << ","
-        << row.l << ","
-        << row.u << ","
-        << row.B << ",";
-
-    if (row.lb < 0) out << "-,";
-    else out << std::fixed << std::setprecision(1) << row.lb << ",";
-
-    if (row.ub < 0) out << "-,";
-    else out << std::fixed << std::setprecision(1) << row.ub << ",";
-
-    out << std::fixed << std::setprecision(2) << row.gapPercent << ","
-        << std::fixed << std::setprecision(2) << row.timeSeconds << ","
-        << row.status << "\n";
+    out << row.instanceName << "," << row.k << ",";
+    printResult(out, row.nIP, false);
+    printResult(out, row.nFEAS, false);
+    printResult(out, row.nMAX, false);
+    printResult(out, row.IP, false);
+    printResult(out, row.FEAS, false);
+    printResult(out, row.MAX, false);
+    printResult(out, row.tIP, false);
+    printResult(out, row.tFEAS, false);
+    printResult(out, row.tMAX, true);
+    out << "\n";
 
     out.flush();
 }
