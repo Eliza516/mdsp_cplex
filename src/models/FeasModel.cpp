@@ -76,7 +76,7 @@ MDSPSolution FeasModel::solve(bool verbose) {
             for (int i = 0; i < t; ++i)
                 for (int j = i + 1; j < t; ++j)
                     sum += x[dIdx][i][j];
-            model.add(sum >= multiplicities_[dIdx]);
+            model.add(sum == multiplicities_[dIdx]);
             sum.end();
         }
 
@@ -86,18 +86,17 @@ MDSPSolution FeasModel::solve(bool verbose) {
 
         model.add(p[0] == 0);
 
-        // Constraint (17): Σ_{j≠i} x^d_{ij} ≤ 1, 1 ≤ i ≤ t, d ∈ D
-        // Each point is the endpoint at most once per distance.
-        // Single sum over all j ≠ i per (i, d) pair (matching IP's constraint 5 with z_i=1).
+        // Constraint (17): Σ_{d∈D'} x^d_{ij} ≤ 1, for each pair 1≤i<j≤t.
+        // Sum over all distance values d for a *fixed pair* (i, j) — a pair of points
+        // can realize at most one distance value.
         for (int i = 0; i < t; ++i) {
-            for (int dIdx = 0; dIdx < nd; ++dIdx) {
-                IloExpr sumAll(env);
-                for (int j = 0; j < t; ++j) {
-                    if (j > i)      sumAll += x[dIdx][i][j];
-                    else if (j < i) sumAll += x[dIdx][j][i];
+            for (int j = i + 1; j < t; ++j) {
+                IloExpr sumD(env);
+                for (int dIdx = 0; dIdx < nd; ++dIdx) {
+                    sumD += x[dIdx][i][j];
                 }
-                model.add(sumAll <= 1);
-                sumAll.end();
+                model.add(sumD <= 1);
+                sumD.end();
             }
         }
 
