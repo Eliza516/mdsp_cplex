@@ -67,5 +67,20 @@ run: $(TARGET)
 run-batch: $(TARGET)
 	./$(TARGET) --batch data/ --out results.csv --time 3600
 
+prep:
+	@mkdir -p bin
+	$(CXX) $(CXXFLAGS) -o bin/prep_processing \
+	src/prep_processing.cpp \
+	src/core/Reader.cpp \
+	src/bounds/Bounds.cpp \
+	src/bounds/ThornArcPruner.cpp \
+	src/bounds/CyclicLowerBound.cpp \
+	src/bounds/ArithSequenceUB.cpp \
+	src/bounds/LNSUpperBound.cpp \
+	$(LDFLAGS)
+
+run-prep: prep
+	./bin/prep_processing
+
 clean:
 	rm -rf bin $(OBJ) results.csv

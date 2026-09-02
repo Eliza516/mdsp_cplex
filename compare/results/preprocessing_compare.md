@@ -1,6 +1,6 @@
 # Báo cáo So sánh: Code vs Paper
-- **Thời gian**: 2026-09-01 15:01:51
-- **File code**: `compare/results/prep_new_lns.md`
+- **Thời gian**: 2026-09-02 15:08:18
+- **File code**: `results/prep_results_new.md`
 - **File paper**: `results/rp_preprocessing.csv`
 ---
 ## 1. Tổng quan
