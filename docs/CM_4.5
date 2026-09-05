@@ -1,0 +1,245 @@
+Trước khi viết chứng minh, tôi kiểm tra công thức bằng vét cạn trên **toàn bộ** các bộ D nhỏ — để biết chỗ nào chứng minh chắc chắn đúng và chỗ nào chỉ là "chưa tìm được phản ví dụ".
+
+Được — tôi sẽ dựng lại chứng minh theo cách gãy gọn hơn paper (paper trình bày phần này khá rối), mỗi bước kèm số cụ thể trên `D = {1, 2, 3, 10}`. Cuối bài có kết quả vét cạn cho biết công thức đúng tới đâu.
+
+---
+
+# Cần chứng minh gì
+
+> **Theorem 3.** Tồn tại **một** nghiệm tối ưu `P*` sao cho mọi điểm của nó nằm trong `[0, B]`, với
+> ```
+> B = max{ ( Σ_{d∈Du} d − dmin ) / 2 ,  dmax }
+> ```
+
+Chú ý chữ **tồn tại**: không cần mọi nghiệm tối ưu đều gọn, chỉ cần có một cái gọn — vì thuật toán chỉ đi tìm một nghiệm.
+
+**Ý tưởng toàn bộ chứng minh, gói trong một câu:**
+
+> Một nghiệm bất kỳ là các "khối" **mắc nối tiếp** nhau nên `pmax` = **TỔNG** độ dài các khối; ta chứng minh luôn xếp lại được thành các khối **mắc song song** từ gốc, khi đó `pmax` = **MAX** độ dài các khối; rồi chặn độ dài của **một** khối.
+
+Ba bổ đề tương ứng: **B1** (tổng → max), **B2** (chặn một khối có chu trình), **B3** (chặn một khối là cầu).
+
+---
+
+## Chuẩn bị: "khối" là gì
+
+Vẽ DS graph của nghiệm: đỉnh = điểm, cung = khoảng cách (hướng từ nhỏ sang lớn). Với `P = {0,1,3,13}`:
+
+```
+            ┌──────── 3 ────────┐
+            │                   ▼
+           (0) ──1──▶ (1) ──2──▶ (3) ──10──▶ (13)
+           └──────── khối A ──────┘└─ khối B ─┘
+```
+
+**Khối** = *cycle component* của paper: hai cung nằm chung một khối khi có một chu trình chứa cả hai. Cung không nằm trong chu trình nào (như cung 10) tự nó là một khối, gọi là **cầu**.
+
+Định nghĩa đại lượng then chốt — **span** của khối K:
+
+```
+span(K) = (điểm lớn nhất trong K) − (điểm nhỏ nhất trong K)
+
+span(A) = 3 − 0 = 3        span(B) = 13 − 3 = 10
+```
+
+Tính chất của khối (paper phát biểu, đây là kết quả chuẩn của lý thuyết đồ thị): **hai khối khác nhau chung nhiều nhất một đỉnh**. Nếu chung hai đỉnh thì đã có chu trình nối chúng, và theo định nghĩa chúng phải là **một** khối.
+
+---
+
+## Bổ đề 1 — Đổi TỔNG thành MAX
+
+**Phát biểu.** Từ nghiệm `P` bất kỳ, dựng được một cấu hình mới có cùng tập khoảng cách, cùng số điểm, và
+```
+pmax(mới) = max_K span(K)     thay vì     pmax(cũ) ≤ Σ_K span(K)
+```
+
+**Chứng minh (chính là Cut-Roll-Paste).** Các khối dính nhau tại đúng một đỉnh, tạo thành một cấu trúc **cây** (không có vòng giữa các khối — nếu có thì chúng đã gộp thành một khối). Đi từ gốc 0 tới điểm xa nhất, ta đi qua một dãy khối nối tiếp, mỗi khối đóng góp nhiều nhất `span` của nó:
+
+```
+pmax(cũ) ≤ span(A) + span(B) = 3 + 10 = 13        ← đúng bằng 13
+```
+
+Bây giờ **tháo rời** các khối và **dịch** mỗi khối sao cho điểm nhỏ nhất của nó về 0, rồi **treo tất cả vào chung gốc 0**:
+
+```
+TRƯỚC (nối tiếp)                    SAU (song song)
+
+ 0 ──A(span 3)──▶ 3 ──B(span 10)──▶ 13         0 ──A(span 3)──▶ 3
+ └──────────── 13 ────────────┘                0 ──B(span 10)─────────▶ 10
+
+ pmax = 3 + 10 = 13                            pmax = max(3, 10) = 10
+```
+
+Vì sao được phép dịch? Dịch cả một khối đi cùng một lượng **không đổi hiệu giữa hai điểm bất kỳ trong khối**, mà các cung chỉ nối các điểm *trong cùng* một khối. Nên tập trọng số các cung — tức là D — **giữ nguyên**. Cấu hình mới vẫn phủ D. ∎
+
+Với ví dụ: cấu hình mới là `P = {0, 1, 3, 10}`, và `Δ = {1,2,3,7,9,10} ⊇ D` ✓ — vét cạn xác nhận đây đúng là một nghiệm tối ưu.
+
+> **Chỗ bổ đề này có thể hỏng** (giữ trong đầu, cuối bài sẽ quay lại): sau khi dịch, hai đỉnh **của hai khối khác nhau có thể rơi trùng giá trị**. Khi đó "cấu hình mới" không còn là một tập điểm phân biệt, và một cặp điểm chỉ đếm được một khoảng cách chứ không phải hai. Đây chính là chỗ paper phải dựng ra khái niệm DM graph và hai mệnh đề (\*), (\*\*).
+
+---
+
+## Bổ đề 2 — Chặn span của một khối có chu trình
+
+Đây là trái tim của §4.5, và cũng là chỗ xuất hiện phép **chia 2**.
+
+**Phát biểu.** Nếu khối K chứa chu trình thì `2·span(K) ≤ Σ_{d ∈ D(C)} d`, với C là một chu trình đơn trong K.
+
+**Chứng minh.** Gọi `w` = điểm nhỏ nhất của K, `v` = điểm lớn nhất. Vì K là một khối (2-liên thông), **luôn có một chu trình đơn C đi qua cả `w` và `v`**. Chu trình đó tự chia thành **hai đường đi rời cung** từ `w` tới `v`:
+
+```
+                    đường π₁
+              ┌───────────────────┐
+             (w)                 (v)
+              └───────────────────┘
+                    đường π₂
+```
+
+Đi dọc một đường, mỗi cung góp `+d` nếu thuận chiều, `−d` nếu ngược chiều. Cả hai đường đều đi từ `w` tới `v` nên cả hai đều cho ra **cùng một hiệu** `v − w = span(K)`:
+
+```
+span(K) = Σ_{cung ∈ π₁} σ·d   ≤   Σ_{cung ∈ π₁} d      (vì mỗi σ = ±1)
+span(K) = Σ_{cung ∈ π₂} σ·d   ≤   Σ_{cung ∈ π₂} d
+────────────────────────────────────────────────────── cộng lại
+2·span(K)  ≤  Σ_{cung ∈ π₁} d + Σ_{cung ∈ π₂} d  =  Σ_{d ∈ D(C)} d
+```
+
+Bước cuối dùng đúng chỗ hai đường **rời cung**: hợp của chúng là các cung của C, không đếm trùng cung nào. ∎
+
+**Vì sao lại có số 2** — trực giác: đỉnh xa nhất được "trả tiền hai lần", một lần lúc đi và một lần lúc về. Muốn nó xa thì phải bỏ ra hai lần quãng đường, mà tổng ngân sách chỉ có `Σ D(C)`.
+
+**Chạy trên khối A** (`C` = tam giác 0 → 1 → 3 → 0, `w = 0`, `v = 3`):
+
+```
+π₁ = (0 ─1─▶ 1 ─2─▶ 3):    span = +1 +2 = 3   ≤ 1 + 2 = 3
+π₂ = (0 ─3─▶ 3) đi ngược:  span = +3          ≤ 3
+────────────────────────────────────────────────────
+2 × 3 = 6  ≤  1 + 2 + 3 = 6                    ← ĐẲNG THỨC
+```
+
+Đẳng thức xảy ra vì `3 = 1 + 2`, tức mọi cung "cùng phe". Nên đây là bổ đề **chặt**, không phải chặn thừa.
+
+---
+
+## Bổ đề 3 — Từ `Σ D(C)` sang `Σ Du`
+
+`D(C)` là các khoảng cách nằm trên chu trình C. Ta không biết C gồm những giá trị nào, nhưng **đếm được số lượng**:
+
+```
+C là chu trình ĐƠN  ⟹  số cung của C = số đỉnh của C ≤ |P*| ≤ u
+```
+
+(mỗi đỉnh là một điểm phân biệt của nghiệm, mà nghiệm có nhiều nhất u điểm).
+
+Vậy `D(C)` là một tập con của D **có nhiều nhất u phần tử**. Tổng của một tập con ≤ u phần tử thì lớn nhất khi lấy đúng **u giá trị lớn nhất** — đó chính là định nghĩa `Du`:
+
+```
+Σ_{d ∈ D(C)} d  ≤  Σ_{d ∈ Du} d
+```
+
+Ghép với Bổ đề 2:  `span(K) ≤ (Σ_{Du} d) / 2`.
+
+**Chạy trên ví dụ:** `u = 4`, `Du = {1,2,3,10}`, `Σ = 16` → `span(A) ≤ 8`. Thực tế `span(A) = 3` ✓ (lỏng, vì công thức phải dùng chung cho mọi instance).
+
+### Còn `− dmin` ở đâu ra?
+
+Nếu C dùng **nhiều nhất u−1 cung** thì tổng của nó ≤ tổng của `u−1` giá trị lớn nhất:
+
+```
+Σ_{D(C)} ≤ Σ_{Du} − (giá trị nhỏ nhất trong Du) ≤ Σ_{Du} − dmin
+```
+
+vì phần tử nhỏ nhất của `Du` luôn ≥ `dmin`. Đó là công thức (28), và chia 2 ra:
+
+```
+span(K)  ≤  ( Σ_{d∈Du} d − dmin ) / 2
+```
+
+**Nói thẳng:** khi C dùng đúng u cung thì lập luận trên **không áp dụng được**, và ta chỉ chứng minh được `Σ_{Du}/2` chứ không có `−dmin`. Paper vá ca này bằng phép đổi chỗ cung ở trang 13 — phần lỏng lẻo nhất của bài, như tôi đã nêu ở lượt trước. Nên **`−dmin` là số hạng ít được biện minh nhất trong cả công thức**.
+
+---
+
+## Bổ đề 4 — Khối là cầu
+
+Khối B chỉ có một cung, không có chu trình ⇒ không có hai đường đi ⇒ Bổ đề 2 vô dụng. Nhưng nó đơn giản:
+
+```
+span(cầu trọng số d) = d ≤ dmax
+```
+
+**Chạy trên ví dụ:** `span(B) = 10 = dmax` ✓.
+
+Đây là lý do bắt buộc phải có nhánh `max{…, dmax}`. Với `D = {1,2,3,10}`:
+
+```
+(Σ_{Du} − dmin)/2 = (16 − 1)/2 = 7      ← nếu chỉ dùng nhánh này thì B = 7
+```
+
+nhưng mọi nghiệm hợp lệ **buộc** phải có hai điểm cách nhau 10, tức có điểm ≥ 10. Cận 7 sẽ khiến CPLEX báo *infeasible* cho một bài toán có nghiệm. Nhánh `dmax` không phải để cho đẹp — nó chống đúng ca **thorn arc** của §4.1 (và `10` ở đây đúng là thorn arc: tổ hợp ±1 của `{1,2,3}` chỉ phủ `[−6, 6]`).
+
+---
+
+## Ghép bốn bổ đề
+
+```
+pmax  =  max_K span(K)                                        (Bổ đề 1)
+
+       ≤  max{  max over khối có chu trình  ,  max over cầu  }
+
+       ≤  max{  (Σ_{d∈Du} d − dmin)/2      ,     dmax        }   (B2+B3, B4)
+
+       =  B                                                   ∎
+```
+
+Toàn bộ trên ví dụ, đọc từ trên xuống:
+
+```
+nghiệm {0,1,3,13}, pmax = 13
+   │
+   │  B1: tháo khối, dịch về gốc, treo song song
+   ▼
+{0,1,3,10}, pmax = max(span A, span B) = max(3, 10) = 10
+                        │              │
+              B2+B3: ≤ (16−1)/2 = 7    B4: ≤ dmax = 10
+                        └──────┬───────┘
+                               ▼
+                    B = max(7, 10) = 10        (Fontoura: B' = ΣD = 16)
+```
+
+Vét cạn 12 nghiệm tối ưu: `pmax ∈ {10, 11, 12, 13}`, trong đó **4 nghiệm có `pmax ≤ 10`**. Đúng như Theorem 3 hứa: không phải mọi nghiệm, nhưng tồn tại.
+
+---
+
+# Kiểm chứng công thức bằng vét cạn — và một cảnh báo
+
+Tôi cho chạy **toàn bộ** các bộ D có 3–5 phần tử với giá trị 1–7, giải tối ưu bằng vét cạn, rồi kiểm tra có nghiệm tối ưu nào nằm trong `[0, B]` không (dùng `u = |P*|`, tức u chặt nhất hợp lệ):
+
+| Loại D | Số instance | Vi phạm Theorem 3 |
+|---|---|---|
+| Giá trị **phân biệt**, `u ≤ \|D\|` | 64 | **0** |
+| Giá trị **phân biệt**, `u = \|D\|+1` | 27 | **0** |
+| Có **bội** (giá trị lặp), `u ≤ \|D\|` | 439 | **75 (17%)** |
+| Có **bội**, `u = \|D\|+1` | 226 | **100 (44%)** |
+
+Công thức **đúng vững** trên D có các giá trị phân biệt, và **sai** trên D có bội cao. Ví dụ nhỏ nhất:
+
+```
+D = {1, 1, 1}     →  |P*| = 4, nghiệm {0,1,2,3}, pmax nhỏ nhất = 3
+                     B = max((3−1)/2, 1) = 1        ← cận SAI, nhỏ hơn thực tế
+```
+
+**Vì sao hỏng — đúng chỗ Bổ đề 1 tôi đã đánh dấu.** Với `D = {1,1,1}`, DS graph là một đường thẳng `0—1—2—3` gồm **ba cầu**, mỗi cầu span 1. Tháo ra dịch về gốc thì cả ba chồng lên nhau thành ba cung song song giữa 0 và 1. Nhưng một **cặp điểm** `{0,1}` chỉ sinh ra khoảng cách 1 **một lần**, không phải ba lần — cấu hình gọn không còn là nghiệm hợp lệ. Điều kiện "mọi cung vào/ra một đỉnh phải khác giá trị nhau" trong định nghĩa **DI/OCDM** của paper chính là để chặn ca này, và ở đây nó bị vi phạm nên mệnh đề (\*\*) không áp dụng được.
+
+Điều này khớp với thứ ta đã gặp ở lượt trước: instance `D = {1,1}` làm LNS trả `u = 2` sai — nguyên nhân gốc không nằm ở LNS mà ở chính `B = 1` do Theorem 3 sinh ra.
+
+**Đừng suy rộng quá:** đây là kết quả trên instance rất nhỏ với bội cao. 449 instance benchmark của Fontoura không cho thấy triệu chứng này, và tôi **chưa** kiểm tra được chúng (kiểm tra cần biết `|P*|` thật, tức phải giải xong bài toán). Phát biểu an toàn nhất: *công thức có điều kiện ẩn về bội mà paper không nêu*.
+
+---
+
+## Tóm tắt
+
+- **Bổ đề 1** biến `pmax` từ **tổng** span các khối thành **max** span — đây là chỗ ăn tiền lớn nhất (13 → 10 trên ví dụ), và cũng là chỗ duy nhất có thể hỏng.
+- **Bổ đề 2** cho số 2 ở mẫu: đỉnh xa nhất tới được bằng hai đường rời cung, cộng lại `2·span ≤ Σ` — đây là bất đẳng thức **chặt**.
+- **Bổ đề 3** đổi `Σ D(C)` thành `Σ Du` bằng phép đếm "chu trình đơn có ≤ u cung"; **`−dmin` là số hạng yếu nhất**, chỉ chứng minh được khi chu trình dùng ≤ u−1 cung.
+- **Bổ đề 4** cho nhánh `dmax`, bắt buộc phải có, chống ca thorn arc.
+
+Muốn tôi (a) ra quiz 5 câu để bạn tự kiểm tra lại chuỗi bốn bổ đề, (b) chạy kiểm tra bội trên đúng 449 instance benchmark để xem điều kiện ẩn kia có chạm tới dữ liệu thật không, hay (c) dựng hình SVG bốn bổ đề này rồi thay slide 16 trong deck?
